@@ -6,7 +6,8 @@ const rateLimit = require('express-rate-limit');
 const {SecretManagerServiceClient} = require('@google-cloud/secret-manager');
 
 // Define the secret reference
-const openRouterApiKey = defineSecret('OPENROUTER_API_KEY');
+const deepseekApiKey = defineSecret('DEEPSEEK_API_KEY');
+const client = new SecretManagerServiceClient(); // Initialize client here
 
 const app = express();
 
@@ -38,16 +39,13 @@ app.get("/health", (req, res) => {
 // Middleware to inject API key into request
 app.use(async (req, res, next) => {
   try {
-    // Initialize Secret Manager client
-    const client = new SecretManagerServiceClient();
-    
     // Access the secret value
     const [version] = await client.accessSecretVersion({
-      name: `projects/guide-gen/secrets/OPENROUTER_API_KEY/versions/latest`
+      name: `projects/guide-gen/secrets/DEEPSEEK_API_KEY/versions/latest`
     });
     
     // Attach to request
-    req.openRouterApiKey = version.payload.data.toString();
+    req.deepseekApiKey = version.payload.data.toString();
     next();
   } catch (error) {
     console.error("Failed to load API key:", error);
@@ -58,7 +56,7 @@ app.use(async (req, res, next) => {
 app.post("/generate-guide-text", async (req, res) => {
   try {
     const {generateGuideText} = require("./gpt.js");
-    const apiKey = req.openRouterApiKey;
+    const apiKey = req.deepseekApiKey; // Fixed variable name
     
     if (!apiKey) {
       return res.status(500).json({error: "API key not configured"});
@@ -97,7 +95,7 @@ app.post("/generate-guide-text", async (req, res) => {
 app.post("/explain-step", async (req, res) => {
   try {
     const {generateExplanation} = require("./gpt.js");
-    const apiKey = req.openRouterApiKey;
+    const apiKey = req.deepseekApiKey; // Fixed variable name
     
     if (!apiKey) {
       return res.status(500).json({error: "API key not configured"});
@@ -128,7 +126,7 @@ const functionOptions = {
   cors: true,
   maxInstances: 10,
   invoker: "public",
-  secrets: [openRouterApiKey]  // Reference the secret
+  secrets: [deepseekApiKey]
 };
 
 exports.api = onRequest(functionOptions, app);

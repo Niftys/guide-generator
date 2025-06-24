@@ -19,14 +19,22 @@ export default function App() {
   const [detail, setDetail] = useState(2); // 1: Concise, 2: Balanced, 3: Detailed
   const [tone, setTone] = useState('Friendly');
   const [custom, setCustom] = useState('');
+  const [subject, setSubject] = useState('General'); // New subject state
+
+  // Subject options
+  const subjects = [
+    'General', 'Technology', 'Cooking', 'Health & Fitness', 'Education', 
+    'Arts & Crafts', 'Sports', 'Music', 'Games', 'Travel', 'Finance', 
+    'Gardening', 'Parenting', 'Automotive', 'Science', 'History', 
+    'Literature', 'Business', 'DIY Projects', 'Pets', 'Fashion', 
+    'Beauty', 'Photography', 'Psychology'
+  ];
 
   // Set API base URL based on environment
   useEffect(() => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // Use proxy in development
       setApiBaseUrl('/api');
     } else {
-      // Use live Firebase function in production
       const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
       if (projectId) {
         setApiBaseUrl(`https://us-central1-${projectId}.cloudfunctions.net/api`);
@@ -38,16 +46,40 @@ export default function App() {
 
   // Helper to build the advanced prompt
   const buildPrompt = () => {
-    let adv = '';
-    if (audience) adv += `\nAudience: ${audience}`;
-    if (style) adv += `\nStyle: ${style}`;
-    if (numSteps) adv += `\nNumber of steps: ${numSteps}`;
-    if (detail === 1) adv += `\nBe concise.`;
-    if (detail === 2) adv += `\nBe balanced in detail.`;
-    if (detail === 3) adv += `\nBe very detailed.`;
-    if (tone) adv += `\nTone: ${tone}`;
-    if (custom) adv += `\n${custom}`;
-    return `${prompt}${adv}`;
+    let instructions = `Create a comprehensive step-by-step guide about: ${prompt}\n\n`;
+    
+    // Add subject context
+    instructions += `Subject Category: ${subject}\n`;
+    
+    // Audience targeting
+    instructions += `Target Audience: ${audience} level\n`;
+    if (audience === "Beginner") instructions += "Assume no prior knowledge. Explain basic concepts.\n";
+    if (audience === "Expert") instructions += "Use technical terminology. Skip basics.\n";
+    
+    // Detail level
+    if (detail === 1) instructions += "Detail Level: Concise (1-2 sentences per step)\n";
+    if (detail === 2) instructions += "Detail Level: Balanced (2-3 sentences per step)\n";
+    if (detail === 3) instructions += "Detail Level: Detailed (include examples)\n";
+    
+    // Style and tone
+    instructions += `Style: ${style}\nTone: ${tone}\n`;
+    if (style === "Technical") instructions += "Use precise terminology\n";
+    if (tone === "Humorous") instructions += "Include light-hearted analogies\n";
+    if (tone === "Furry") instructions += "Speak in an uwu voice, cringe, cute shy, furry roleplay with Kaomojis and the likes\n";
+    
+    // Step count constraint
+    if (numSteps) instructions += `Number of Steps: Exactly ${numSteps}\n`;
+    
+    // Custom instructions
+    if (custom) instructions += `Additional Requirements: ${custom}\n`;
+    
+    // Output format reminder
+    instructions += "\nIMPORTANT FORMATTING RULES:\n";
+    instructions += "- First line = Title\n";
+    instructions += "- Subsequent lines = Numbered steps (1., 2., 3.)\n";
+    instructions += "- NO markdown, asterisks, or special formatting\n";
+    
+    return instructions;
   };
 
   const generateGuide = async () => {
@@ -61,7 +93,7 @@ export default function App() {
     setGuideText('');
     setSteps([]);
     setExplanations({});
-  
+    
     const MAX_RETRIES = 2;
     let attempt = 0;
     let success = false;
@@ -90,16 +122,30 @@ export default function App() {
         const text = data.guideText.trim();
         setGuideText(text);
   
+        // STEP EXTRACTION
         const lines = text.split('\n').filter(Boolean);
-        let extractedSteps = [];
+        const extractedSteps = [];
+        let currentStep = '';
+  
+        lines.slice(1).forEach(line => {
+          // Detect new steps (number followed by period)
+          if (/^\d+\.\s/.test(line)) {
+            if (currentStep) extractedSteps.push(currentStep);
+            currentStep = line.replace(/^\d+\.\s*/, '');
+          } 
+          // Detect sub-steps (letter followed by period)
+          else if (/^[a-z]\.\s/i.test(line)) {
+            currentStep += '\n' + line;
+          }
+          // Continue current step
+          else if (currentStep) {
+            currentStep += ' ' + line;
+          }
+        });
         
-        if (lines.length > 0) {
-          extractedSteps = lines.slice(1).map(line => 
-            line.replace(/^\d+[\.\)]\s*/, '').trim()
-          );
-        }
-        
+        if (currentStep) extractedSteps.push(currentStep);
         setSteps(extractedSteps);
+        
         success = true;
       } catch (e) {
         lastError = e;
@@ -110,13 +156,16 @@ export default function App() {
           console.error('Final attempt failed:', e);
         }
         
-        // Wait before retrying (exponential backoff)
+        // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 500 * attempt));
       }
     }
     
     setLoadingGuide(false);
   };
+  
+  // Extract title from guide text
+  const title = guideText.split('\n')[0] || 'Guide';
 
   const explainStep = async (index, stepText) => {
     if (explanations[index]) {
@@ -157,9 +206,6 @@ export default function App() {
     }
   };
 
-  // Extract title from guide text
-  const title = guideText.split('\n')[0] || 'Guide';
-
   return (
     <div className="app-container">
       <div className="header">
@@ -184,6 +230,21 @@ export default function App() {
               onChange={e => setPrompt(e.target.value)}
               rows={3}
             />
+            
+            {/* Subject dropdown - naturally placed on main page */}
+            <div className="subject-row">
+              <label>Subject:</label>
+              <select 
+                value={subject} 
+                onChange={e => setSubject(e.target.value)}
+                className="subject-select"
+              >
+                {subjects.map((subj, index) => (
+                  <option key={index} value={subj}>{subj}</option>
+                ))}
+              </select>
+            </div>
+            
             <button 
               type="button"
               onClick={() => setShowAdvanced(v => !v)}
@@ -192,6 +253,7 @@ export default function App() {
             >
               {showAdvanced ? <FiChevronUp /> : <FiChevronDown />} Advanced Settings
             </button>
+            
             {showAdvanced && (
               <div className="advanced-settings">
                 <div className="adv-row">
@@ -227,6 +289,7 @@ export default function App() {
                     <option>Friendly</option>
                     <option>Authoritative</option>
                     <option>Humorous</option>
+                    <option>Furry</option>
                   </select>
                 </div>
                 <div className="adv-row">
@@ -246,7 +309,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <FiZap /> Generate AI Guide
+                  <FiZap /> Generate Guide
                 </>
               )}
             </button>
@@ -274,7 +337,23 @@ export default function App() {
                 <li key={i} className="step-item">
                   <div className="step-header">
                     <div className="step-number">{i + 1}</div>
-                    <div className="step-text">{step}</div>
+                    <div className="step-text">
+                      {step.split('\n').map((line, lineIndex) => {
+                        if (/^[a-z]\.\s/i.test(line)) {
+                          const letter = line.charAt(0);
+                          return (
+                            <span 
+                              key={lineIndex} 
+                              className="sub-step"
+                              data-letter={letter.toUpperCase() + "."}
+                            >
+                              {line.substring(2)}
+                            </span>
+                          );
+                        }
+                        return <div key={lineIndex}>{line}</div>;
+                      })}
+                    </div>
                     <button
                       className="explain-btn"
                       onClick={() => explainStep(i, step)}

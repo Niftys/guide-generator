@@ -224,20 +224,49 @@ button.loading {
   align-items: center;
 }
 
-.download-btn {
-  background: white;
-  color: var(--primary);
-  border: 1px solid var(--primary);
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  width: auto;
-  margin: 0;
-  box-shadow: none;
+/* Subject row styling */
+.subject-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0 0.5rem;
 }
 
-.download-btn:hover {
-  background: var(--primary);
-  color: white;
+.subject-row label {
+  font-weight: 500;
+  color: var(--dark);
+  font-size: 1rem;
+}
+
+.subject-select {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--light-gray);
+  font-size: 1rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--dark);
+  transition: border 0.2s;
+}
+
+.subject-select:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .subject-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .subject-select {
+    width: 100%;
+  }
 }
 
 .guide-meta {
@@ -301,11 +330,23 @@ button.loading {
 }
 
 .step-text {
-  color: var(--dark);
-  font-size: 1.05rem;
-  line-height: 1.6;
-  flex: 1;
-  padding-right: 0.5rem;
+  white-space: pre-line;
+  line-height: 1.7;
+}
+
+.sub-step {
+  display: block;
+  margin-left: 1.5rem;
+  margin-top: 0.4rem;
+  position: relative;
+}
+
+.sub-step::before {
+  content: attr(data-letter);
+  position: absolute;
+  left: -1.5rem;
+  font-weight: 600;
+  color: var(--primary);
 }
 
 .explain-btn {
