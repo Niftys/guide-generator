@@ -9,6 +9,7 @@ When given a user prompt, respond with exactly:
 - Steps should be brief, purely instructional, and contain no repeated numbering inside the steps.
 - Do NOT include any introductions, summaries, or extra text.
 - Use simple language, with each step clearly separated by a newline.
+- If the user provides extra instructions (such as audience, style, tone, number of steps, or detail level), follow them exactly.
 
 Example response for prompt "make a website for your business for free":
 

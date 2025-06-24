@@ -10,6 +10,29 @@ export default function App() {
   const [explanations, setExplanations] = useState({});
   const [error, setError] = useState('');
 
+  // Advanced settings state
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [audience, setAudience] = useState('Beginner');
+  const [style, setStyle] = useState('Casual');
+  const [numSteps, setNumSteps] = useState('');
+  const [detail, setDetail] = useState(2); // 1: Concise, 2: Balanced, 3: Detailed
+  const [tone, setTone] = useState('Friendly');
+  const [custom, setCustom] = useState('');
+
+  // Helper to build the advanced prompt
+  const buildPrompt = () => {
+    let adv = '';
+    if (audience) adv += `\nAudience: ${audience}`;
+    if (style) adv += `\nStyle: ${style}`;
+    if (numSteps) adv += `\nNumber of steps: ${numSteps}`;
+    if (detail === 1) adv += `\nBe concise.`;
+    if (detail === 2) adv += `\nBe balanced in detail.`;
+    if (detail === 3) adv += `\nBe very detailed.`;
+    if (tone) adv += `\nTone: ${tone}`;
+    if (custom) adv += `\n${custom}`;
+    return `${prompt}${adv}`;
+  };
+
   const generateGuide = async () => {
     if (!prompt.trim()) {
       setError('Please enter a guide topic');
@@ -26,7 +49,7 @@ export default function App() {
       const res = await fetch('/api/generate-guide-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: buildPrompt() }),
       });
       
       // Handle empty responses
@@ -180,6 +203,57 @@ export default function App() {
               onChange={e => setPrompt(e.target.value)}
               rows={3}
             />
+            <button 
+              type="button"
+              onClick={() => setShowAdvanced(v => !v)}
+              className="advanced-toggle"
+              style={{marginTop: '1rem', marginBottom: showAdvanced ? '1rem' : 0}}
+            >
+              {showAdvanced ? <FiChevronUp /> : <FiChevronDown />} Advanced Settings
+            </button>
+            {showAdvanced && (
+              <div className="advanced-settings">
+                <div className="adv-row">
+                  <label>Audience</label>
+                  <select value={audience} onChange={e => setAudience(e.target.value)}>
+                    <option>Beginner</option>
+                    <option>Intermediate</option>
+                    <option>Expert</option>
+                  </select>
+                </div>
+                <div className="adv-row">
+                  <label>Style</label>
+                  <select value={style} onChange={e => setStyle(e.target.value)}>
+                    <option>Casual</option>
+                    <option>Professional</option>
+                    <option>Technical</option>
+                  </select>
+                </div>
+                <div className="adv-row">
+                  <label>Number of Steps</label>
+                  <input type="number" min="1" max="30" value={numSteps} onChange={e => setNumSteps(e.target.value)} placeholder="Auto" />
+                </div>
+                <div className="adv-row">
+                  <label>Detail Level</label>
+                  <input type="range" min="1" max="3" value={detail} onChange={e => setDetail(Number(e.target.value))} />
+                  <span className="detail-label">
+                    {detail === 1 ? 'Concise' : detail === 2 ? 'Balanced' : 'Detailed'}
+                  </span>
+                </div>
+                <div className="adv-row">
+                  <label>Tone</label>
+                  <select value={tone} onChange={e => setTone(e.target.value)}>
+                    <option>Friendly</option>
+                    <option>Authoritative</option>
+                    <option>Humorous</option>
+                  </select>
+                </div>
+                <div className="adv-row">
+                  <label>Custom Instructions</label>
+                  <textarea value={custom} onChange={e => setCustom(e.target.value)} rows={2} placeholder="Any extra instructions for the AI..." />
+                </div>
+              </div>
+            )}
             <button 
               onClick={generateGuide} 
               disabled={loadingGuide}
