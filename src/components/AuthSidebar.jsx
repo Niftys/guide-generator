@@ -75,6 +75,7 @@ const AuthSidebar = ({
       aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
       title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
       tabIndex={0}
+      style={{ background: 'transparent', boxShadow: 'none', border: 'none', padding: 0, minWidth: 0, minHeight: 0 }}
     >
       {isOpen ? <FiChevronLeft size={22} /> : <FiChevronRight size={22} />}
     </button>
@@ -185,8 +186,9 @@ const AuthSidebar = ({
                                 }}
                                 title="Delete guide"
                                 aria-label="Delete guide"
+                                style={{ background: 'transparent', boxShadow: 'none', border: 'none', padding: 0, minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}
                               >
-                                <FiTrash2 />
+                                <FiTrash2 size={20} color="#dc2626" style={{ pointerEvents: 'none' }} />
                               </button>
                             </div>
                           ))}

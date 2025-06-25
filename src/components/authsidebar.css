@@ -27,23 +27,53 @@
     border-right: 1px solid #e5e7eb;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
     z-index: 999;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     width: 320px;
     transform: translateX(-100%);
     display: flex;
     flex-direction: column;
+    opacity: 0;
   }
   
   .auth-sidebar.open {
     transform: translateX(0);
+    opacity: 1;
+    animation: sidebarFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .auth-sidebar.collapsed {
-    width: 80px;
-    min-width: 80px;
-    max-width: 80px;
-    transform: translateX(0);
-    box-shadow: 2px 0 12px rgba(0,0,0,0.04);
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+    overflow: hidden;
+    transform: translateX(-100%) !important;
+    opacity: 0;
+    animation: sidebarFadeOut 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  @keyframes sidebarFadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes sidebarFadeOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
   }
   
   /* Dark mode styles */
@@ -484,10 +514,11 @@
   
   /* Auth section */
   .auth-section {
-    padding: 20px;
+    padding: 28px 20px 24px 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: 0;
   }
   
   .error-message {
@@ -510,29 +541,32 @@
   .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 22px;
+    margin-bottom: 18px;
   }
   
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    margin-bottom: 0;
   }
   
   .form-group label {
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     font-weight: 500;
     color: #374151;
     display: flex;
     align-items: center;
     gap: 6px;
+    margin-bottom: 2px;
   }
   
   .form-group input {
-    padding: 12px;
+    padding: 13px 14px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    font-size: 0.875rem;
+    font-size: 1rem;
     transition: all 0.2s ease;
     background: #ffffff;
   }
@@ -572,15 +606,18 @@
   /* Password input wrapper */
   .password-input-wrapper {
     position: relative;
+    display: flex;
+    align-items: center;
   }
   
   .password-input-wrapper input {
+    flex: 1;
     padding-right: 44px;
   }
   
   .password-toggle {
     position: absolute;
-    right: 12px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     background: none;
@@ -590,6 +627,11 @@
     padding: 4px;
     border-radius: 4px;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    width: 28px;
   }
   
   .password-toggle:hover {
@@ -608,20 +650,20 @@
   
   /* Auth submit button */
   .auth-submit-btn {
-    padding: 12px 16px;
+    margin-top: 6px;
+    margin-bottom: 8px;
+    padding: 13px 0;
+    font-size: 1.05rem;
     background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     color: white;
     border: none;
     border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 8px;
   }
   
   .auth-submit-btn:hover:not(:disabled) {
@@ -653,17 +695,19 @@
   
   /* Auth switch */
   .auth-switch {
-    margin-top: 16px;
+    margin-top: 10px;
     text-align: center;
   }
   
   .switch-btn {
+    font-size: 1rem;
+    padding: 10px 0;
+    margin: 0 auto;
+    width: 100%;
     background: none;
     border: none;
     color: #3b82f6;
-    font-size: 0.875rem;
     cursor: pointer;
-    padding: 8px;
     border-radius: 6px;
     transition: all 0.2s ease;
   }
@@ -704,6 +748,20 @@
     .auth-sidebar .sidebar-content {
       padding-top: 56px;
     }
+    .auth-sidebar.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      max-width: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      pointer-events: none;
+      overflow: hidden;
+      transform: translateX(-100%) !important;
+    }
+    .auth-sidebar .sidebar-toggle-icon {
+      left: 12px !important;
+      top: 18px !important;
+    }
   }
   
   @media (max-width: 480px) {
@@ -716,6 +774,25 @@
     }
     .auth-sidebar {
       max-width: 100%;
+    }
+    .auth-sidebar .sidebar-toggle-icon {
+      left: 8px !important;
+      top: 12px !important;
+    }
+    .auth-section {
+      padding: 18px 8px 16px 8px;
+    }
+    .auth-form {
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .auth-submit-btn {
+      font-size: 0.98rem;
+      padding: 11px 0;
+    }
+    .switch-btn {
+      font-size: 0.95rem;
+      padding: 8px 0;
     }
   }
   
@@ -768,40 +845,9 @@
 
   /* Keep only the minimal chevron button styles */
   .sidebar-toggle-icon {
-    position: absolute;
-    top: 18px;
-    right: 18px;
-    z-index: 1200;
-    width: 40px;
-    height: 40px;
-    background: #f3f4f6;
-    color: #6366f1;
-    border: none;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.10);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
-    outline: none;
-  }
-  .sidebar-toggle-icon:hover, .sidebar-toggle-icon:focus {
-    background: #6366f1;
-    color: #fff;
-    outline: 2px solid #6366f1;
-    outline-offset: 2px;
-    transform: scale(1.08);
-  }
-  .dark-mode .sidebar-toggle-icon {
-    background: #23293a;
-    color: #a5b4fc;
-    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.18);
-  }
-  .dark-mode .sidebar-toggle-icon:hover, .dark-mode .sidebar-toggle-icon:focus {
-    background: #6366f1;
-    color: #fff;
-    outline: 2px solid #a5b4fc;
-    outline-offset: 2px;
+    position: fixed !important;
+    left: 16px !important;
+    top: 18px !important;
+    z-index: 1201 !important;
+    pointer-events: auto !important;
   }

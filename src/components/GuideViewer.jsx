@@ -71,10 +71,6 @@ const GuideViewer = ({
                   <>
                     <FiWifiOff /> Offline
                   </>
-                ) : currentGuide?.id ? (
-                  <>
-                    <FiEdit2 /> Update
-                  </>
                 ) : (
                   <>
                     <FiBookmark /> Save

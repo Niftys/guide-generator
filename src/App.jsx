@@ -3,7 +3,7 @@ import firebase from './firebase'; // Correct import
 import ToastNotification from './components/ToastNotification';
 import { 
   FiHelpCircle, FiLoader, FiChevronDown, FiChevronUp, 
-  FiZap, FiSun, FiMoon, FiUser, FiMenu, FiX, FiPlus 
+  FiZap, FiSun, FiMoon, FiUser, FiMenu, FiX, FiPlus, FiChevronRight 
 } from 'react-icons/fi';
 import { 
   doc, 
@@ -710,19 +710,32 @@ export default function App() {
         deleteGuide={deleteGuide}
         logOut={logOut} // Fixed reference
       />
-      
+      {/* Sidebar open button (only when sidebar is closed) */}
+      {!sidebarOpen && (
+        <button
+          className="sidebar-open-btn"
+          aria-label="Open sidebar"
+          title="Open sidebar"
+          onClick={() => setSidebarOpen(true)}
+          style={{ background: 'transparent', boxShadow: 'none', border: 'none', padding: 0, minWidth: 0, minHeight: 0 }}
+        >
+          <FiChevronRight size={28} color="#6366f1" style={{ opacity: 0.85 }} />
+        </button>
+      )}
+      {/* Floating theme toggle button */}
+      <button 
+        className="theme-toggle-floating"
+        onClick={() => setDarkMode(!darkMode)}
+        title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+        aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {darkMode ? <FiSun /> : <FiMoon />}
+      </button>
       <div className="main-content-wrapper">
         <div className="header">
           <div className="logo">
             <FiZap className="logo-icon" />
             <h1>Ask SMEGLY</h1>
-            <button 
-              className="theme-toggle"
-              onClick={() => setDarkMode(!darkMode)}
-              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {darkMode ? <FiSun /> : <FiMoon />}
-            </button>
           </div>
           <p className="subtitle">Transform complex tasks into step-by-step guides with SMEGLY assistance</p>
         </div>
