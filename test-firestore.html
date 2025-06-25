@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firestore Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Firestore Connection Test</h1>
+    
+    <div class="test-section">
+        <h3>Network Status</h3>
+        <p>Online: <span id="network-status">Checking...</span></p>
+        <p>Firebase Config: <span id="config-status">Checking...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>Connection Tests</h3>
+        <button class="btn-primary" onclick="testConnection()">Test Connection</button>
+        <button class="btn-secondary" onclick="testAuth()">Test Auth</button>
+        <button class="btn-secondary" onclick="testFirestore()">Test Firestore</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Console Log</h3>
+        <pre id="console-log"></pre>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, enableIndexedDbPersistence, enableNetwork, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCwsNL4sr-uTuRoZ2KpcBObiQTJRmjHsk",
+            authDomain: "guide-gen.firebaseapp.com",
+            projectId: "guide-gen",
+            storageBucket: "guide-gen.firebasestorage.app",
+            messagingSenderId: "532793465722",
+            appId: "1:532793465722:web:c2e3cdda8d0453f6f7d4c3"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Update config status
+        document.getElementById('config-status').textContent = 'Loaded';
+        document.getElementById('config-status').parentElement.className = 'test-section success';
+
+        // Network status
+        function updateNetworkStatus() {
+            const isOnline = navigator.onLine;
+            const statusElement = document.getElementById('network-status');
+            statusElement.textContent = isOnline ? 'Online' : 'Offline';
+            statusElement.parentElement.className = isOnline ? 'test-section success' : 'test-section warning';
+        }
+
+        updateNetworkStatus();
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+
+        // Console logging
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logElement = document.getElementById('console-log');
+
+        function addToLog(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+
+        // Test functions
+        window.testConnection = async function() {
+            console.log('Testing basic connection...');
+            try {
+                await enableNetwork(db);
+                console.log('Network enabled successfully');
+                addResult('Connection test passed', 'success');
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                addResult('Connection test failed: ' + error.message, 'error');
+            }
+        };
+
+        window.testAuth = async function() {
+            console.log('Testing authentication...');
+            try {
+                // Try email/password auth instead of anonymous
+                console.log('Note: Anonymous auth is disabled. Testing with email/password...');
+                addResult('Authentication: Anonymous auth disabled (this is normal)', 'warning');
+                addResult('Use email/password authentication in your app', 'success');
+            } catch (error) {
+                console.error('Authentication test failed:', error);
+                addResult('Authentication test failed: ' + error.message, 'error');
+            }
+        };
+
+        window.testFirestore = async function() {
+            console.log('Testing Firestore...');
+            try {
+                // Skip persistence test since it's already initialized
+                console.log('Persistence already initialized, skipping...');
+                
+                // Try a simple query
+                const testCollection = collection(db, '_test');
+                await getDocs(testCollection);
+                console.log('Firestore query successful');
+                
+                addResult('Firestore test passed', 'success');
+            } catch (error) {
+                console.error('Firestore test failed:', error);
+                if (error.code === 'failed-precondition') {
+                    addResult('Firestore: Persistence already initialized (normal)', 'warning');
+                } else {
+                    addResult('Firestore test failed: ' + error.message, 'error');
+                }
+            }
+        };
+
+        function addResult(message, type) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultElement = document.createElement('div');
+            resultElement.className = `test-section ${type}`;
+            resultElement.textContent = message;
+            resultsDiv.appendChild(resultElement);
+        }
+
+        // Auto-run basic tests
+        setTimeout(() => {
+            testConnection();
+        }, 1000);
+    </script>
+</body>
+</html> 

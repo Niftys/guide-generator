@@ -7,15 +7,15 @@ import {
   FiLogOut,
   FiLogIn,
   FiUserPlus,
-  FiX,
-  FiMenu,
   FiTrash2,
   FiClock,
   FiLayers,
   FiMail,
   FiLock,
   FiEye,
-  FiEyeOff
+  FiEyeOff,
+  FiChevronLeft,
+  FiChevronRight
 } from 'react-icons/fi';
 
 const AuthSidebar = ({ 
@@ -67,22 +67,26 @@ const AuthSidebar = ({
     });
   };
 
+  // Simple floating icon button for sidebar toggle
+  const SidebarToggle = () => (
+    <button 
+      className="sidebar-toggle-icon"
+      onClick={onToggle}
+      aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+      title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+      tabIndex={0}
+    >
+      {isOpen ? <FiChevronLeft size={22} /> : <FiChevronRight size={22} />}
+    </button>
+  );
+
   return (
     <>
-      {/* Overlay for mobile */}
       {isOpen && (
         <div className="sidebar-overlay" onClick={onClose} />
       )}
-      
-      <div className={`auth-sidebar ${isOpen ? 'open' : 'collapsed'}`}>
-        <button 
-          className="sidebar-toggle" 
-          onClick={onToggle}
-          aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
-        >
-          {isOpen ? <FiX size={20} /> : <FiMenu size={20} />}
-        </button>
-        
+      <nav className={`auth-sidebar ${isOpen ? 'open' : 'collapsed'}`} aria-label="User sidebar">
+        <SidebarToggle />
         <div className="sidebar-content">
           {isOpen ? (
             <>
@@ -92,11 +96,11 @@ const AuthSidebar = ({
                   <p className="sidebar-subtitle">Sign in to save your guides</p>
                 )}
               </div>
-
+              <hr className="sidebar-divider" />
               {user ? (
                 <div className="user-section">
                   <div className="user-profile">
-                    <div className="user-avatar">
+                    <div className="user-avatar" tabIndex={0} aria-label="User avatar">
                       <FiUser />
                     </div>
                     <div className="user-details">
@@ -112,12 +116,10 @@ const AuthSidebar = ({
                       </div>
                     </div>
                   </div>
-
-                  <button className="sign-out-btn" onClick={logOut}>
+                  <button className="sign-out-btn" onClick={logOut} aria-label="Sign out">
                     <FiLogOut />
                     Sign Out
                   </button>
-
                   <div className="saved-guides-section">
                     <div className="section-header">
                       <h4>
@@ -125,7 +127,6 @@ const AuthSidebar = ({
                         Saved Guides
                       </h4>
                     </div>
-                    
                     <div className="guides-container">
                       {savedGuides.length === 0 ? (
                         <div className="empty-state">
@@ -147,6 +148,7 @@ const AuthSidebar = ({
                                 }}
                                 role="button"
                                 tabIndex={0}
+                                aria-label={`Load guide: ${guide.title}`}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     loadGuide(guide);
@@ -200,7 +202,6 @@ const AuthSidebar = ({
                       {authError}
                     </div>
                   )}
-                  
                   <form onSubmit={handleFormSubmit} className="auth-form">
                     <div className="form-group">
                       <label htmlFor="auth-email">
@@ -215,9 +216,9 @@ const AuthSidebar = ({
                         placeholder="Enter your email"
                         required
                         disabled={isSubmitting}
+                        autoComplete="username"
                       />
                     </div>
-                    
                     <div className="form-group">
                       <label htmlFor="auth-password">
                         <FiLock size={16} />
@@ -233,18 +234,19 @@ const AuthSidebar = ({
                           required
                           minLength={6}
                           disabled={isSubmitting}
+                          autoComplete="current-password"
                         />
                         <button
                           type="button"
                           className="password-toggle"
                           onClick={() => setShowPassword(!showPassword)}
                           aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          tabIndex={0}
                         >
                           {showPassword ? <FiEyeOff /> : <FiEye />}
                         </button>
                       </div>
                     </div>
-                    
                     {isSignUp && (
                       <div className="form-group">
                         <label htmlFor="auth-username">
@@ -261,10 +263,10 @@ const AuthSidebar = ({
                           minLength={3}
                           maxLength={20}
                           disabled={isSubmitting}
+                          autoComplete="nickname"
                         />
                       </div>
                     )}
-                    
                     <button 
                       type="submit" 
                       className="auth-submit-btn"
@@ -288,7 +290,6 @@ const AuthSidebar = ({
                       )}
                     </button>
                   </form>
-                  
                   <div className="auth-switch">
                     <button 
                       type="button"
@@ -307,24 +308,9 @@ const AuthSidebar = ({
                 </div>
               )}
             </>
-          ) : (
-            <div className="collapsed-view">
-              <button 
-                className="collapsed-icon" 
-                onClick={onToggle}
-                aria-label="Open sidebar"
-              >
-                <FiUser />
-              </button>
-              {user && savedGuides.length > 0 && (
-                <div className="guide-count-badge" title={`${savedGuides.length} saved guides`}>
-                  {savedGuides.length > 99 ? '99+' : savedGuides.length}
-                </div>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
-      </div>
+      </nav>
     </>
   );
 };

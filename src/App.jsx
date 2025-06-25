@@ -1,17 +1,10 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
+import firebase from './firebase'; // Correct import
+import ToastNotification from './components/ToastNotification';
 import { 
   FiHelpCircle, FiLoader, FiChevronDown, FiChevronUp, 
-  FiZap, FiSun, FiMoon, FiUser, FiMenu, FiX 
+  FiZap, FiSun, FiMoon, FiUser, FiMenu, FiX, FiPlus 
 } from 'react-icons/fi';
-import { 
-  auth, 
-  db, 
-  signUp, 
-  logIn, 
-  logOut, 
-  onAuthChange 
-} from './firebase';
 import { 
   doc, 
   setDoc, 
@@ -21,17 +14,28 @@ import {
   query, 
   where, 
   getDocs,
-  deleteDoc
+  deleteDoc,
+  updateDoc
 } from 'firebase/firestore';
 import AuthSidebar from './components/AuthSidebar';
+import GuideCreation from './components/GuideCreation';
+import GuideViewer from './components/GuideViewer';
 
 export default function App() {
+  const { 
+    auth, 
+    db, 
+    signUp, 
+    logIn, 
+    logOut, 
+    onAuthChange,
+    checkFirestoreConnection,
+    setFirestoreOnline
+  } = firebase;
+  const [toast, setToast] = useState(null);
   const [prompt, setPrompt] = useState('');
-  const [guideText, setGuideText] = useState('');
-  const [steps, setSteps] = useState([]);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [loadingExplanationIndex, setLoadingExplanationIndex] = useState(null);
-  const [explanations, setExplanations] = useState({});
   const [error, setError] = useState('');
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [darkMode, setDarkMode] = useState(false);
@@ -57,6 +61,24 @@ export default function App() {
   const [savedGuides, setSavedGuides] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Guide states
+  const [isViewingGuide, setIsViewingGuide] = useState(false);
+  const [currentGuide, setCurrentGuide] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Subject options
+  const subjects = [
+    'General', 'Technology', 'Cooking', 'Health & Fitness', 'Education', 
+    'Arts & Crafts', 'Sports', 'Music', 'Games', 'Travel', 'Finance', 
+    'Gardening', 'Parenting', 'Automotive', 'Science', 'History', 
+    'Literature', 'Business', 'DIY Projects', 'Pets', 'Fashion', 
+    'Beauty', 'Photography', 'Psychology'
+  ];
+
+  // Add a save queue for offline scenarios
+  const [saveQueue, setSaveQueue] = useState([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+
   // Auth state listener
   useEffect(() => {
     const unsubscribe = onAuthChange((user) => {
@@ -71,6 +93,84 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  // Monitor network connectivity
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network came online');
+      setIsOnline(true);
+      // Try to refresh data when coming back online
+      if (user) {
+        // Add a small delay to ensure connection is stable
+        setTimeout(() => {
+          loadSavedGuides(user.uid);
+        }, 1000);
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('Network went offline');
+      setIsOnline(false);
+      setToast({
+        message: 'You\'re now offline. Some features may be limited.',
+        type: 'warning'
+      });
+    };
+
+    // Check initial network status
+    if (!navigator.onLine) {
+      console.log('Initial network status: offline');
+      setIsOnline(false);
+      setToast({
+        message: 'You\'re currently offline. Some features may be limited.',
+        type: 'warning'
+      });
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user]);
+
+  // Process save queue when coming back online
+  useEffect(() => {
+    if (isOnline && saveQueue.length > 0 && !isProcessingQueue) {
+      processSaveQueue();
+    }
+  }, [isOnline, saveQueue, isProcessingQueue]);
+
+  const processSaveQueue = async () => {
+    if (saveQueue.length === 0) return;
+    
+    setIsProcessingQueue(true);
+    console.log(`Processing ${saveQueue.length} queued saves...`);
+    
+    for (const queuedGuide of saveQueue) {
+      try {
+        await saveGuideToFirestore(queuedGuide);
+        console.log('Queued guide saved successfully');
+      } catch (error) {
+        console.error('Failed to save queued guide:', error);
+      }
+    }
+    
+    setSaveQueue([]);
+    setIsProcessingQueue(false);
+  };
+
+  const saveGuideToFirestore = async (guideData) => {
+    if (guideData.id) {
+      const docRef = doc(db, 'guides', guideData.id);
+      await updateDoc(docRef, guideData);
+    } else {
+      const docRef = await addDoc(collection(db, 'guides'), guideData);
+      return docRef.id;
+    }
+  };
 
   // Load user profile
   const loadUserProfile = async (userId) => {
@@ -88,20 +188,82 @@ export default function App() {
     }
   };
 
-  // Load saved guides
   const loadSavedGuides = async (userId) => {
-    const q = query(collection(db, 'guides'), where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
-    const guides = [];
-    querySnapshot.forEach((doc) => {
-      guides.push({ 
-        id: doc.id, 
-        ...doc.data(),
-        // Ensure steps is always an array
-        steps: Array.isArray(doc.data().steps) ? doc.data().steps : []
+    try {
+      // Skip connection check to avoid the problematic Listen stream
+      // Instead, try the actual operation and handle errors gracefully
+      console.log('Loading saved guides for user:', userId);
+      
+      const q = query(collection(db, 'guides'), where('userId', '==', userId));
+      
+      // Add timeout to the query
+      const queryPromise = getDocs(q);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout')), 15000)
+      );
+      
+      const querySnapshot = await Promise.race([queryPromise, timeoutPromise]);
+      const guides = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        guides.push({ 
+          id: doc.id, 
+          ...data,
+          // Ensure steps is always an array
+          steps: Array.isArray(data.steps) ? data.steps : [],
+          // Ensure explanations is always an object
+          explanations: (data.explanations && typeof data.explanations === 'object') 
+            ? data.explanations : {},
+          // Ensure timestamp is handled properly
+          timestamp: data.timestamp || new Date()
+        });
       });
-    });
-    setSavedGuides(guides);
+      
+      // Sort guides by timestamp (newest first)
+      guides.sort((a, b) => {
+        const timeA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+        const timeB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+        return timeB.getTime() - timeA.getTime();
+      });
+      
+      setSavedGuides(guides);
+      console.log(`Loaded ${guides.length} saved guides`);
+      
+    } catch (error) {
+      console.error('Error loading saved guides:', error);
+      
+      // Handle specific offline/connection errors
+      if (error.message?.includes('timeout') ||
+          error.code === 'failed-precondition' || 
+          error.message?.includes('offline') ||
+          error.message?.includes('network') ||
+          error.message?.includes('client is offline') ||
+          error.code === 'unavailable') {
+        console.warn('Firestore offline - using cached data');
+        setToast({
+          message: 'Working offline - guides may not be up to date',
+          type: 'warning'
+        });
+        // Don't show error toast for offline scenarios
+        return;
+      }
+      
+      let errorMessage = 'Failed to load saved guides';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please sign in again.';
+      } else if (error.code === 'unauthenticated') {
+        errorMessage = 'Authentication expired. Please sign in again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
+    }
   };
 
   // Handle authentication
@@ -126,47 +288,149 @@ export default function App() {
     }
   };
 
-  // Save guide to Firestore
   const saveGuide = async () => {
+    console.log('Save guide called');
+    
     if (!user) {
-      setAuthError('Please sign in to save guides');
+      console.log('No user - showing error toast');
+      setToast({
+        message: 'Please sign in to save guides',
+        type: 'error'
+      });
       return;
     }
     
-    if (!title || steps.length === 0) {
-      setError('No guide to save');
+    if (!currentGuide || !currentGuide.title || !currentGuide.steps || currentGuide.steps.length === 0) {
+      console.log('No valid guide to save');
+      setToast({
+        message: 'No guide to save',
+        type: 'error'
+      });
       return;
     }
     
     setSaving(true);
+    console.log('Starting save process...');
+    
     try {
+      // Validate and clean the data before saving
+      const cleanSteps = currentGuide.steps
+        .filter(step => step && typeof step === 'string' && step.trim().length > 0)
+        .map(step => step.trim());
+      
+      if (cleanSteps.length === 0) {
+        throw new Error('No valid steps to save');
+      }
+      
+      // Create a clean explanations object
+      const cleanExplanations = {};
+      if (currentGuide.explanations && typeof currentGuide.explanations === 'object') {
+        Object.keys(currentGuide.explanations).forEach(key => {
+          const explanation = currentGuide.explanations[key];
+          if (explanation && typeof explanation === 'string' && explanation.trim().length > 0) {
+            cleanExplanations[key] = explanation.trim();
+          }
+        });
+      }
+      
       const guideData = {
         userId: user.uid,
-        title,
-        steps,
-        explanations: Object.keys(explanations).length > 0 ? explanations : null,
-        prompt,
+        title: String(currentGuide.title || '').trim(),
+        steps: cleanSteps,
+        explanations: cleanExplanations,
+        prompt: String(prompt || '').trim(),
         timestamp: new Date(),
-        subject,
-        audience,
-        style,
-        detail,
-        tone,
-        custom
+        // Ensure all metadata is properly typed
+        subject: String(subject || 'General'),
+        audience: String(audience || 'Beginner'),
+        style: String(style || 'Casual'),
+        detail: Number(detail) || 2,
+        tone: String(tone || 'Friendly'),
+        custom: String(custom || '').trim()
       };
       
-      console.log('Saving guide:', guideData);
+      console.log('Guide data to save:', guideData);
       
-      await addDoc(collection(db, 'guides'), guideData);
-      loadSavedGuides(user.uid);
-      setSaving(false);
-      return true;
+      // Check if we're offline or have connection issues
+      if (!navigator.onLine) {
+        console.log('Device is offline, queuing save');
+        setSaveQueue(prev => [...prev, guideData]);
+        setToast({
+          message: 'You\'re offline. Guide will be saved when connection is restored.',
+          type: 'warning'
+        });
+        return;
+      }
+      
+      // Try to save with timeout
+      const savePromise = saveGuideToFirestore(guideData);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Save timeout')), 10000)
+      );
+      
+      const newGuideId = await Promise.race([savePromise, timeoutPromise]);
+      
+      if (newGuideId) {
+        // Update currentGuide with new ID
+        setCurrentGuide(prev => ({ ...prev, id: newGuideId }));
+      }
+      
+      // Show success message
+      setToast({
+        message: currentGuide.id 
+          ? 'Guide updated successfully!' 
+          : 'Guide saved successfully!',
+        type: 'success'
+      });
+      
+      // Refresh saved guides list
+      console.log('Refreshing saved guides list');
+      await loadSavedGuides(user.uid);
+      console.log('Save process completed successfully');
+      
     } catch (error) {
-      console.error("Error saving guide:", error);
-      setError("Failed to save guide: " + error.message);
+      console.error('Save error:', error);
+      
+      // Check if it's a connection error
+      if (error.message?.includes('timeout') || 
+          error.code === 'unavailable' ||
+          error.message?.includes('offline') ||
+          error.message?.includes('network')) {
+        
+        console.log('Connection error detected, queuing save');
+        setSaveQueue(prev => [...prev, guideData]);
+        setToast({
+          message: 'Connection issue detected. Guide will be saved when connection is restored.',
+          type: 'warning'
+        });
+        return;
+      }
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to save guide';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please sign in again.';
+      } else if (error.code === 'unauthenticated') {
+        errorMessage = 'Authentication expired. Please sign in again.';
+      } else if (error.code === 'resource-exhausted') {
+        errorMessage = 'Database quota exceeded. Please try again later.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
+    } finally {
       setSaving(false);
-      return false;
     }
+  };
+
+  // Close toast
+  const closeToast = () => {
+    setToast(null);
   };
 
   // Delete saved guide
@@ -183,25 +447,30 @@ export default function App() {
   // Load guide into editor
   const loadGuide = (guide) => {
     setPrompt(guide.prompt);
-    setGuideText(guide.title + '\n' + guide.steps.join('\n'));
-    setSteps(guide.steps);
-    setExplanations(guide.explanations || {});
     setSubject(guide.subject || 'General');
     setAudience(guide.audience || 'Beginner');
     setStyle(guide.style || 'Casual');
     setDetail(guide.detail || 2);
     setTone(guide.tone || 'Friendly');
     setCustom(guide.custom || '');
+    
+    setCurrentGuide({
+      id: guide.id,
+      title: guide.title,
+      steps: guide.steps,
+      explanations: guide.explanations || {}
+    });
+    
+    setIsViewingGuide(true);
   };
 
-  // Subject options
-  const subjects = [
-    'General', 'Technology', 'Cooking', 'Health & Fitness', 'Education', 
-    'Arts & Crafts', 'Sports', 'Music', 'Games', 'Travel', 'Finance', 
-    'Gardening', 'Parenting', 'Automotive', 'Science', 'History', 
-    'Literature', 'Business', 'DIY Projects', 'Pets', 'Fashion', 
-    'Beauty', 'Photography', 'Psychology'
-  ];
+  // Reset guide creation process
+  const resetGuideCreation = () => {
+    setPrompt('');
+    setError('');
+    setIsViewingGuide(false);
+    setCurrentGuide(null);
+  };
 
   // Set API base URL based on environment
   useEffect(() => {
@@ -274,9 +543,7 @@ export default function App() {
     
     setLoadingGuide(true);
     setError('');
-    setGuideText('');
-    setSteps([]);
-    setExplanations({});
+    setIsViewingGuide(false);
     
     const MAX_RETRIES = 2;
     let attempt = 0;
@@ -304,10 +571,10 @@ export default function App() {
         }
         
         const text = data.guideText.trim();
-        setGuideText(text);
   
         // STEP EXTRACTION
         const lines = text.split('\n').filter(Boolean);
+        const title = lines[0] || 'Guide';
         const extractedSteps = [];
         let currentStep = '';
   
@@ -328,8 +595,14 @@ export default function App() {
         });
         
         if (currentStep) extractedSteps.push(currentStep);
-        setSteps(extractedSteps);
         
+        setCurrentGuide({
+          title,
+          steps: extractedSteps,
+          explanations: {}
+        });
+        
+        setIsViewingGuide(true);
         success = true;
       } catch (e) {
         lastError = e;
@@ -342,18 +615,21 @@ export default function App() {
         
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+      } finally {
+        setLoadingGuide(false);
       }
     }
-    
-    setLoadingGuide(false);
   };
   
-  // Extract title from guide text
-  const title = guideText.split('\n')[0] || 'Guide';
-
   const explainStep = async (index, stepText) => {
-    if (explanations[index]) {
-      setExplanations(prev => ({ ...prev, [index]: null }));
+    if (currentGuide?.explanations?.[index]) {
+      setCurrentGuide(prev => ({
+        ...prev,
+        explanations: {
+          ...prev.explanations,
+          [index]: null
+        }
+      }));
       return;
     }
 
@@ -378,11 +654,20 @@ export default function App() {
         throw new Error('Invalid explanation format from server');
       }
       
-      setExplanations(prev => ({ ...prev, [index]: data.explanation }));
+      setCurrentGuide(prev => ({
+        ...prev,
+        explanations: {
+          ...prev.explanations,
+          [index]: data.explanation
+        }
+      }));
     } catch (e) {
-      setExplanations(prev => ({ 
-        ...prev, 
-        [index]: e.message || 'Failed to load explanation'
+      setCurrentGuide(prev => ({
+        ...prev,
+        explanations: {
+          ...prev.explanations,
+          [index]: e.message || 'Failed to load explanation'
+        }
       }));
       console.error('Explanation error:', e);
     } finally {
@@ -392,6 +677,19 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Toast Notification */}
+      {toast && (
+        <ToastNotification 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={closeToast} 
+        />
+      )}
+      {error && (
+        <div className="global-error">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
       <AuthSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -410,7 +708,7 @@ export default function App() {
         savedGuides={savedGuides}
         loadGuide={loadGuide}
         deleteGuide={deleteGuide}
-        logOut={logOut}
+        logOut={logOut} // Fixed reference
       />
       
       <div className="main-content-wrapper">
@@ -430,190 +728,52 @@ export default function App() {
         </div>
 
         <div className="main-content">
-          <div className="input-section">
-            <div className="input-card">
-              <h2>What would you like to learn?</h2>
-              <p className="input-hint">Describe a task or concept you want to understand</p>
-              
-              {error && <div className="error-message">{error}</div>}
-              
-              <textarea
-                placeholder="e.g., 'How to create a React component', 'Steps to bake sourdough bread', 'Explain machine learning concepts'"
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                rows={3}
-              />
-              
-              {/* Subject dropdown */}
-              <div className="subject-row">
-                <label>Subject:</label>
-                <select 
-                  value={subject} 
-                  onChange={e => setSubject(e.target.value)}
-                  className="subject-select"
-                >
-                  {subjects.map((subj, index) => (
-                    <option key={index} value={subj}>{subj}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <button 
-                type="button"
-                onClick={() => setShowAdvanced(v => !v)}
-                className="advanced-toggle"
-                style={{marginTop: '1rem', marginBottom: showAdvanced ? '1rem' : 0}}
-              >
-                {showAdvanced ? <FiChevronUp /> : <FiChevronDown />} Advanced Settings
-              </button>
-              
-              {showAdvanced && (
-                <div className="advanced-settings">
-                  <div className="adv-row">
-                    <label>Audience</label>
-                    <select value={audience} onChange={e => setAudience(e.target.value)}>
-                      <option>Beginner</option>
-                      <option>Intermediate</option>
-                      <option>Expert</option>
-                    </select>
-                  </div>
-                  <div className="adv-row">
-                    <label>Style</label>
-                    <select value={style} onChange={e => setStyle(e.target.value)}>
-                      <option>Casual</option>
-                      <option>Professional</option>
-                      <option>Technical</option>
-                    </select>
-                  </div>
-                  <div className="adv-row">
-                    <label>Number of Steps</label>
-                    <input type="number" min="1" max="30" value={numSteps} onChange={e => setNumSteps(e.target.value)} placeholder="Auto" />
-                  </div>
-                  <div className="adv-row">
-                    <label>Detail Level</label>
-                    <input type="range" min="1" max="3" value={detail} onChange={e => setDetail(Number(e.target.value))} />
-                    <span className="detail-label">
-                      {detail === 1 ? 'Concise' : detail === 2 ? 'Balanced' : 'Detailed'}
-                    </span>
-                  </div>
-                  <div className="adv-row">
-                    <label>Tone</label>
-                    <select value={tone} onChange={e => setTone(e.target.value)}>
-                      <option>Friendly</option>
-                      <option>Authoritative</option>
-                      <option>Humorous</option>
-                      <option>Furry</option>
-                    </select>
-                  </div>
-                  <div className="adv-row">
-                    <label>Custom Instructions</label>
-                    <textarea value={custom} onChange={e => setCustom(e.target.value)} rows={2} placeholder="Any extra instructions for the AI..." />
-                  </div>
-                </div>
-              )}
-              <button 
-                onClick={generateGuide} 
-                disabled={loadingGuide || !apiBaseUrl}
-                className={loadingGuide ? 'loading' : ''}
-              >
-                {loadingGuide ? (
-                  <>
-                    <FiLoader className="spin" /> Generating Guide...
-                  </>
-                ) : (
-                  <>
-                    <FiZap /> Generate Guide
-                  </>
-                )}
-              </button>
-              {!apiBaseUrl && (
-                <p className="error-message" style={{marginTop: '10px'}}>
-                  API endpoint not configured. Please set VITE_FIREBASE_PROJECT_ID in .env
-                </p>
-              )}
-            </div>
-          </div>
-
-          {guideText && (
-            <div className="guide-container">
-              <div className="guide-header">
-                <h2>{title}</h2>
-                <div className="guide-actions">
-                  <div className="guide-meta">
-                    <span>{steps.length} steps</span>
-                    {user && (
-                      <button 
-                        onClick={saveGuide}
-                        disabled={saving}
-                        className="save-btn"
-                      >
-                        {saving ? (
-                          <>
-                            <FiLoader className="spin" /> Saving...
-                          </>
-                        ) : "Save Guide"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <ol className="steps-list">
-                {steps.map((step, i) => (
-                  <li key={i} className="step-item">
-                    <div className="step-header">
-                      <div className="step-number">{i + 1}</div>
-                      <div className="step-text">
-                        {step.split('\n').map((line, lineIndex) => {
-                          if (/^[a-z]\.\s/i.test(line)) {
-                            const letter = line.charAt(0);
-                            return (
-                              <span 
-                                key={lineIndex} 
-                                className="sub-step"
-                                data-letter={letter.toUpperCase() + "."}
-                              >
-                                {line.substring(2)}
-                              </span>
-                            );
-                          }
-                          return <div key={lineIndex}>{line}</div>;
-                        })}
-                      </div>
-                      <button
-                        className="explain-btn"
-                        onClick={() => explainStep(i, step)}
-                        disabled={loadingExplanationIndex === i}
-                        aria-expanded={!!explanations[i]}
-                        title={explanations[i] ? 'Hide explanation' : 'Explain this step'}
-                      >
-                        {loadingExplanationIndex === i ? (
-                          <FiLoader className="spin" />
-                        ) : explanations[i] ? (
-                          <FiChevronUp />
-                        ) : (
-                          <FiHelpCircle />
-                        )}
-                        <span className="btn-text">
-                          {explanations[i] ? 'Hide' : 'Explain'}
-                        </span>
-                      </button>
-                    </div>
-                    
-                    {explanations[i] && (
-                      <div className="explanation-text">
-                        <div className="explanation-header">
-                          <div className="ai-label">What does this mean?</div>
-                        </div>
-                        <div className="explanation-content">
-                          {explanations[i]}
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
+          {!isViewingGuide ? (
+            <GuideCreation
+              prompt={prompt}
+              setPrompt={setPrompt}
+              subject={subject}
+              setSubject={setSubject}
+              showAdvanced={showAdvanced}
+              setShowAdvanced={setShowAdvanced}
+              audience={audience}
+              setAudience={setAudience}
+              style={style}
+              setStyle={setStyle}
+              numSteps={numSteps}
+              setNumSteps={setNumSteps}
+              detail={detail}
+              setDetail={setDetail}
+              tone={tone}
+              setTone={setTone}
+              custom={custom}
+              setCustom={setCustom}
+              error={error}
+              loadingGuide={loadingGuide}
+              apiBaseUrl={apiBaseUrl}
+              generateGuide={generateGuide}
+              subjects={subjects}
+            />
+          ) : (
+            <GuideViewer
+              currentGuide={currentGuide}
+              user={user}
+              saving={saving}
+              loadingExplanationIndex={loadingExplanationIndex}
+              explainStep={explainStep}
+              saveGuide={saveGuide}
+              resetGuideCreation={resetGuideCreation}
+              prompt={prompt}
+              subject={subject}
+              audience={audience}
+              style={style}
+              detail={detail}
+              tone={tone}
+              custom={custom}
+              isOnline={isOnline}
+              saveQueue={saveQueue}
+              isProcessingQueue={isProcessingQueue}
+            />
           )}
         </div>
         
