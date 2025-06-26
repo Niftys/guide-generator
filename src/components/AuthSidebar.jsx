@@ -116,11 +116,10 @@ const AuthSidebar = ({
                         </span>
                       </div>
                     </div>
+                    <button className="sign-out-btn" onClick={logOut} aria-label="Sign out" title="Sign out">
+                      <FiLogOut size={16} />
+                    </button>
                   </div>
-                  <button className="sign-out-btn" onClick={logOut} aria-label="Sign out">
-                    <FiLogOut />
-                    Sign Out
-                  </button>
                   <div className="saved-guides-section">
                     <div className="section-header">
                       <h4>

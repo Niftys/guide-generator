@@ -20,6 +20,8 @@ import {
 import AuthSidebar from './components/AuthSidebar';
 import GuideCreation from './components/GuideCreation';
 import GuideViewer from './components/GuideViewer';
+import { startOfDay, endOfDay } from 'date-fns';
+import HowieLogo from '../public/howie-logo.svg';
 
 export default function App() {
   const { 
@@ -290,6 +292,27 @@ export default function App() {
 
   const saveGuide = async () => {
     console.log('Save guide called');
+
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const guidesTodayQuery = query(
+      collection(db, 'guides'),
+      where('userId', '==', user.uid),
+      where('timestamp', '>=', start),
+      where('timestamp', '<=', end)
+    );
+
+    const guidesTodaySnapshot = await getDocs(guidesTodayQuery);
+
+    if (guidesTodaySnapshot.size >= 10) {
+      setToast({
+        message: "You can only create 10 guides per day.",
+        type: "error"
+      });
+      return; // Don't allow creation
+    }
     
     if (!user) {
       console.log('No user - showing error toast');
@@ -732,12 +755,12 @@ export default function App() {
         {darkMode ? <FiSun /> : <FiMoon />}
       </button>
       <div className="main-content-wrapper">
-        <div className="header">
-          <div className="logo">
-            <FiZap className="logo-icon" />
-            <h1>Ask SMEGLY</h1>
+        <div className="header" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24}}>
+          <img src={HowieLogo} alt="Howie Logo" style={{width: 96, height: 96, marginBottom: 12, borderRadius: '50%', boxShadow: '0 4px 24px rgba(99,102,241,0.12)'}} />
+          <div className="logo" style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+            <h1 style={{fontWeight: 800, fontSize: '2.2rem', letterSpacing: '0.01em'}}>Ask HOWIE</h1>
           </div>
-          <p className="subtitle">Transform complex tasks into step-by-step guides with SMEGLY assistance</p>
+          <p className="subtitle">Transform complex tasks into step-by-step guides with Howie assistance</p>
         </div>
 
         <div className="main-content">

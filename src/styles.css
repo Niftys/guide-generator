@@ -1190,131 +1190,82 @@ button.loading {
   transform: none;
 }
 
-.sidebar-open-btn, .sidebar-toggle-icon {
+.theme-toggle-floating, .sidebar-open-btn, .sidebar-toggle-icon {
   position: fixed !important;
-  left: 16px;
-  top: 18px;
-  z-index: 1202;
-  width: 40px;
-  height: 40px;
-  background: transparent !important;
-  color: #6366f1;
-  border: none;
-  border-radius: 50%;
-  box-shadow: none !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
-  outline: none;
-  opacity: 0.7;
-}
-.sidebar-open-btn:hover, .sidebar-open-btn:focus,
-.sidebar-toggle-icon:hover, .sidebar-toggle-icon:focus {
-  background: rgba(99, 102, 241, 0.08) !important;
-  color: #4338ca;
-  opacity: 1;
-  outline: none;
-  transform: scale(1.08);
-}
-.dark-mode .sidebar-open-btn, .dark-mode .sidebar-toggle-icon {
-  color: #a5b4fc;
-  background: transparent !important;
-}
-.dark-mode .sidebar-open-btn:hover, .dark-mode .sidebar-open-btn:focus,
-.dark-mode .sidebar-toggle-icon:hover, .dark-mode .sidebar-toggle-icon:focus {
-  background: rgba(165, 180, 252, 0.10) !important;
-  color: #818cf8;
-}
-@media (max-width: 768px) {
-  .sidebar-open-btn, .sidebar-toggle-icon {
-    left: 10px;
-    top: 18px;
-    width: 36px;
-    height: 36px;
-    font-size: 1.2rem;
-  }
-}
-@media (max-width: 480px) {
-  .sidebar-open-btn, .sidebar-toggle-icon {
-    left: 6px;
-    top: 10px;
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
-  }
-}
-
-.theme-toggle-floating {
-  position: fixed;
-  top: 18px;
-  right: 18px;
   z-index: 1300;
   background: transparent;
   color: #6366f1;
-  border: none;
+  border: 1px solid #e5e7eb;
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  max-width: 44px;
-  max-height: 44px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.7rem;
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
-  opacity: 0.8;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+  opacity: 0.85;
   padding: 0;
   box-sizing: border-box;
+  box-shadow: none !important;
 }
-.theme-toggle-floating svg {
-  width: 1.5em;
-  height: 1.5em;
-  display: block;
+.theme-toggle-floating {
+  top: 14px;
+  right: 30px;
 }
-.theme-toggle-floating:hover, .theme-toggle-floating:focus {
-  background: rgba(99, 102, 241, 0.08);
+.sidebar-open-btn {
+  left: 10px;
+  top: 0px;
+}
+.sidebar-toggle-icon {
+  left: 10px !important;
+  top: 0px !important;
+  z-index: 1201 !important;
+  pointer-events: auto !important;
+}
+.theme-toggle-floating:hover, .theme-toggle-floating:focus,
+.sidebar-open-btn:hover, .sidebar-open-btn:focus,
+.sidebar-toggle-icon:hover, .sidebar-toggle-icon:focus {
+  background: #f3f4f6;
   color: #4338ca;
+  border-color: #c7d2fe;
   opacity: 1;
   outline: none;
   transform: scale(1.08);
 }
-.dark-mode .theme-toggle-floating {
+.dark-mode .theme-toggle-floating, .dark-mode .sidebar-open-btn, .dark-mode .sidebar-toggle-icon {
   color: #a5b4fc;
   background: transparent;
+  border-color: #374151;
 }
-.dark-mode .theme-toggle-floating:hover, .dark-mode .theme-toggle-floating:focus {
-  background: rgba(165, 180, 252, 0.10);
+.dark-mode .theme-toggle-floating:hover, .dark-mode .theme-toggle-floating:focus,
+.dark-mode .sidebar-open-btn:hover, .dark-mode .sidebar-open-btn:focus,
+.dark-mode .sidebar-toggle-icon:hover, .dark-mode .sidebar-toggle-icon:focus {
+  background: #23293a;
   color: #818cf8;
+  border-color: #6366f1;
 }
 @media (max-width: 768px) {
-  .theme-toggle-floating {
-    top: 10px;
-    right: 10px;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    max-width: 36px;
-    max-height: 36px;
-    font-size: 1.3rem;
+  .theme-toggle-floating, .sidebar-open-btn, .sidebar-toggle-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+    font-size: 1rem;
   }
-}
-@media (max-width: 480px) {
   .theme-toggle-floating {
-    top: 6px;
-    right: 6px;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    min-height: 32px;
-    max-width: 32px;
-    max-height: 32px;
-    font-size: 1.1rem;
+    top: 8px;
+    right: 20px;
+  }
+  .sidebar-open-btn, .sidebar-toggle-icon {
+    left: 6px;
+    top: 10px;
   }
 }
