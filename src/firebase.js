@@ -18,12 +18,12 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDCwsNL4sr-uTuRoZ2KpcBObiQTJRmjHsk",
-  authDomain: "guide-gen.firebaseapp.com",
-  projectId: "guide-gen",
-  storageBucket: "guide-gen.firebasestorage.app",
-  messagingSenderId: "532793465722",
-  appId: "1:532793465722:web:c2e3cdda8d0453f6f7d4c3"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
